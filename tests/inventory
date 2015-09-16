@@ -1,0 +1,12 @@
+---
+hosts:
+- address: 1.1.1.1
+  connection: ssh
+- address: 1.1.1.2
+- address: 1.1.1.3
+  connection: smart
+  user: root
+
+containers:
+- address: 2.2.2.1
+  user: admin
