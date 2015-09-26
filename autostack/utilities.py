@@ -5,9 +5,6 @@ from __future__ import (absolute_import, division, print_function,
                         unicode_literals)
 import socket
 
-__author__ = 'Avi Tal <avi3tal@gmail.com>'
-__date__ = 'Sep 8, 2015'
-
 
 class RegisterClasses(type):
     def __init__(cls, name, bases, dct):

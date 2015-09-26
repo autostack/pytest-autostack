@@ -14,7 +14,7 @@ setup(
     entry_points={
         'pytest11': [
             'autostack = autostack.plugin',
-#            'autostack.sensor = autostack.sensor',
+            'autostack.sensor = autostack.sensor',
         ],
     },
     zip_safe=False,

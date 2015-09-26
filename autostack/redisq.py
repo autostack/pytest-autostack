@@ -8,7 +8,8 @@ import redis
 #import zmq
 import time
 from uuid import uuid4
-from autostack.utils import get_open_port
+from autostack.utilities import get_open_port
+from autostack.constants import CAHNNEL_ID
 
 
 __author__ = 'Avi Tal <avi3tal@gmail.com>'
@@ -16,7 +17,7 @@ __date__ = 'Sep 6, 2015'
 
 
 def gen_key(name):
-    return 'redisqueue:{}'.format(name)
+    return 'autostackqueue:{}'.format(name)
 
 
 class RedisQueue(object):
@@ -30,7 +31,7 @@ class RedisQueue(object):
             host='localhost', port=6379, db=0
         """
         self.__db = redis.Redis(**kwargs)
-        self.__key = name or gen_key(str(uuid4()))
+        self.__key = name or gen_key(CAHNNEL_ID)
 
     def __len__(self):
         """Return the approximate size of the queue."""

@@ -4,8 +4,28 @@
 import ansible.errors
 import pprint
 
-__author__ = 'Avi Tal <avi3tal@gmail.com>'
-__date__ = 'Aug 30, 2015'
+
+class GenericException(Exception):
+    def __init__(self, exitstatus=1,
+                 stdout='', stderr='', fatal=False):
+        self.retval = None
+        self.exitstatus = exitstatus
+        self.out = stdout
+        self.err = stderr
+        self.fatal = fatal
+
+    def __str__(self):
+        msg = '{}: {}'.format(self.__class__.__name__, self.retval)
+        msg += '\nExit Status: {}'.format(self.exitstatus)
+        return msg
+
+
+class MonitorException(GenericException):
+    pass
+
+
+class MonitorFatatException(GenericException):
+    pass
 
 
 class AnsibleNoHostsMatch(ansible.errors.AnsibleError):

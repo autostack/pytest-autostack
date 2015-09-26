@@ -18,6 +18,7 @@ from ansible import callbacks
 
 from autostack.errors import AnsibleCompoundException
 from autostack.environment import Compound
+from autostack.constants import ANSIBLE_CAHNNEL_ID
 
 from pkg_resources import parse_version
 from tempfile import NamedTemporaryFile
@@ -34,33 +35,20 @@ class AnsibleRunnerCallback(callbacks.DefaultRunnerCallbacks):
     TODO:
     - handle logs
     '''
-    def __init__(self, queue):
+    def __init__(self, queue, channel):
         self._q = queue
+        self._ch = channel
 
     def on_ok(self, host, res):
-        self._q.put({'host': host, 'result': res})
+        self._q.publish(self._ch, {'host': host, 'result': res})
         super(AnsibleRunnerCallback, self).on_ok(host, res)
 
     def on_async_ok(self, host, res, jid):
-        self._q.put({'host': host, 'result': res})
+        self._q.publish(self._ch, {'host': host, 'result': res})
         super(AnsibleRunnerCallback, self).on_async_ok(host, res, jid)
 
 
-class AnsiblePlaybookRunnerCallback(callbacks.PlaybookRunnerCallbacks):
-    def __init__(self, queue, *args, **kwargs):
-        super(AnsiblePlaybookRunnerCallback, self).__init__(*args, **kwargs)
-        self._q = queue
-
-    def on_ok(self, host, res):
-        self._q.put({'host': host, 'result': res})
-        super(AnsiblePlaybookRunnerCallback, self).on_ok(host, res)
-
-    def on_async_ok(self, host, res, jid):
-        self._q.put({'host': host, 'result': res})
-        super(AnsiblePlaybookRunnerCallback, self).on_async_ok(host, res, jid)
-
-
-class _AnsibleModule(object):
+class AnsibleModule(object):
     '''
     Wrapper around ansible.runner.Runner()
 
@@ -74,6 +62,7 @@ class _AnsibleModule(object):
     def __init__(self, queue, **kwargs):
         self.options = kwargs
         self.queue = queue
+        self.cb_channel = kwargs.pop('cb_channel', ANSIBLE_CAHNNEL_ID)
 
         # Module name is used when accessing an instance attribute (e.g.
         # self.ping)
@@ -84,7 +73,7 @@ class _AnsibleModule(object):
             return self.__dict__[name]
         except KeyError:
             self.options.update([('module_name', name)])
-            return _AnsibleModule(queue=self.queue, **self.options)
+            return AnsibleModule(queue=self.queue, **self.options)
 
     @classmethod
     def _inventory_manager(cls, nodes):
@@ -109,7 +98,7 @@ class _AnsibleModule(object):
     def __call__(self, nodes, *args, **kwargs):
         # Initialize ansible inventory manage
         inventory_manager = self._inventory_manager(nodes)
-        runner_callbacks = AnsibleRunnerCallback(self.queue)
+        runner_callbacks = AnsibleRunnerCallback(self.queue, self.cb_channel)
 
         # Assemble module argument string
         module_args = list()
@@ -172,8 +161,9 @@ class _AnsibleModule(object):
         stats = callbacks.AggregateStats()
         playbook_cb = callbacks.PlaybookCallbacks(
             verbose=ansible.utils.VERBOSITY)
-        runner_cb = AnsiblePlaybookRunnerCallback(
-            self.queue, stats, verbose=ansible.utils.VERBOSITY)
+#        runner_cb = AnsiblePlaybookRunnerCallback(
+#            self.queue, stats, verbose=ansible.utils.VERBOSITY)
+        runner_callbacks = AnsibleRunnerCallback(self.queue, self.cb_channel)
 
 
         # TODO: add forks=int
@@ -181,7 +171,7 @@ class _AnsibleModule(object):
             playbook=playbook,
             remote_user=self.options.get('user'),
             callbacks=playbook_cb,
-            runner_callbacks=runner_cb,
+            runner_callbacks=runner_callbacks,
             inventory=inventory_manager,
             stats=stats
         )
@@ -216,12 +206,15 @@ class _ExtendedPoller(object):
         return self.__expose_failure()
 
 
-def initialize_ansible(request, queue):
+def initialize_ansible(request, queue, callback=None):
 
     _request = request
     # Remember the pytest request attr
     kwargs = dict(__request__=request)
     kwargs['queue'] = queue
+
+    if callback is not None:
+        kwargs['cb_channel'] = ANSIBLE_CAHNNEL_ID
 
     # Grab options from command-line
     option_names = ['ansible_playbook',
@@ -265,5 +258,5 @@ def initialize_ansible(request, queue):
         kwargs['become_user'] = kwargs['become_user'] or \
             kwargs['sudo_user'] or C.DEFAULT_BECOME_USER
 
-    return _AnsibleModule(**kwargs)
+    return AnsibleModule(**kwargs)
 

@@ -7,15 +7,14 @@ import ansible
 import os
 import pytest
 import ansible.constants as C
+import redis
 
 from autostack.environment import initialize_context
 from autostack.actions import (initialize_ansible, has_ansible_become)
 #from autostack.redisq import (RedisQueue, ZeroMQueue)
-from autostack.redisq import RedisQueue
-from autostack.dispatcher import Dispatcher
-
-__author__ = 'Avi Tal <avi3tal@gmail.com>'
-__date__ = 'Sep 1, 2015'
+#from autostack.redisq import RedisQueue
+from autostack.dispatcher import AnsibleDispatcher
+from autostack.constants import CONFIG
 
 
 queue = None
@@ -156,12 +155,13 @@ def run(request, ctx):
     Return _AnsibleModule instance with function scope.
     '''
     global queue
-    queue = RedisQueue()
+#    queue = RedisQueue()
+    r = redis.StrictRedis(**CONFIG)
 #    queue = ZeroMQueue()
 
-    consumer = Dispatcher(queue, ctx)
+    consumer = AnsibleDispatcher(r, ctx)
     consumer.daemon = True
     consumer.start()
 
-    yield initialize_ansible(request, queue)
-    queue.join()
+    yield initialize_ansible(request, r)
+    consumer.close()

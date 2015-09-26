@@ -1,4 +1,5 @@
 ---
+gather_facts: true
 - hosts: all
   tasks:
   - name: just a setup

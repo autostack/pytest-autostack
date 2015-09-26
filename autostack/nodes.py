@@ -4,7 +4,7 @@
 from __future__ import (absolute_import, division, print_function,
                         unicode_literals)
 from six import with_metaclass
-from autostack.utils import RegisterClasses
+from autostack.utilities import RegisterClasses
 
 __author__ = 'Avi Tal <avi3tal@gmail.com>'
 __date__ = 'Sep 8, 2015'

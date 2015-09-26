@@ -2,13 +2,24 @@
 # -*- coding: UTF-8 -*-
 
 import pytest
+import time
 from pprint import pprint as pp
 
 __author__ = 'Avi Tal <avi3tal@gmail.com>'
 __date__ = 'Sep 1, 2015'
 
 
-def test_ctx(ctx):
+def test_time(ctx):
+    time.sleep(1)
+    print ctx
+
+
+def test_false(ctx):
+    assert False, 'aaaaaaaaaaaaaaaaa'
+
+
+@pytest.mark.monitor
+def test_ctx(ctx, track):
     print
     pp(ctx)
     l1 = len(ctx)
@@ -23,6 +34,12 @@ def test_ctx(ctx):
     l1 = len(ctx)
     pp(ctx)
     assert len(ctx) == l1, 'Length was not increased'
+
+    track.register(ctx.all.address, ['netwok', 'filesystem'])
+    time.sleep(2)
+#    assert False, 'aaaaaaaaaajasd,amksndlakisdja,msdakmsndakjsd,ajksd,amn'
+    track.unregister(ctx.all.address, ['netwok', 'filesystem'])
+    time.sleep(2)
 
 
 def test_all_attr_exists(ctx):
@@ -78,12 +95,9 @@ def test_setup_manually(ctx, run):
 def test_setup_context(ctx, run):
     print
     run.setup_context(ctx)
-    pp(ctx)
-    pp(ctx.hosts[1].facts)
+    print(type(ctx.hosts[1].facts))
 
 
 def test_only_ctx_facts(ctx):
     print
-    pp(ctx.hosts[1].facts)
-    pp(ctx)
     print(type(ctx.hosts[1].facts))

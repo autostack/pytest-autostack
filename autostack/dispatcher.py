@@ -6,18 +6,43 @@ from __future__ import (absolute_import, division, print_function,
 
 import threading
 import time
+import ast
+import abc
 
-
-__author__ = 'Avi Tal <avi3tal@gmail.com>'
-__date__ = 'Sep 9, 2015'
+from autostack.constants import ANSIBLE_CAHNNEL_ID
 
 
 class Dispatcher(threading.Thread):
-    def __init__(self, queue, ctx):
+    def __init__(self, queue, channel):
         super(Dispatcher, self).__init__()
-        self._q = queue
-        self.inventory = ctx
         self.active = True
+        self._q = queue
+
+        self._p = queue.pubsub()
+        self._p.subscribe(channel)
+
+    def run(self):
+        while self.active:
+            msg = self._p.get_message()
+            if msg is None:
+                time.sleep(0.01)
+            elif msg['type'] == 'message':
+                data = ast.literal_eval(msg['data'])
+                self.do(data)
+
+    @abc.abstractmethod
+    def do(self, data):
+        pass
+
+    def close(self):
+        self.active = False
+        self._p.close()
+
+
+class AnsibleDispatcher(Dispatcher):
+    def __init__(self, queue, ctx):
+        super(AnsibleDispatcher, self).__init__(queue, ANSIBLE_CAHNNEL_ID)
+        self.inventory = ctx
 
     def _dispatch(self, host, result):
         nodes = self.inventory.all.filter(address=host)[0]
@@ -26,18 +51,8 @@ class Dispatcher(threading.Thread):
         except AttributeError:
             pass
 
-    def run(self):
-        while self.active:
-            msg = self._q.get(timeout=60)
-            if msg is None:
-                time.sleep(5)
-                continue
-            if msg == 'goodbye':
-                self.close()
-            else:
-                # TODO: handle eval exception
-                if isinstance(msg, dict):
-                    self._dispatch(**msg)
-
-    def close(self):
-        self.active = False
+    def do(self, data):
+        if data.get('type', None) == 'ANSIBLEDONE':
+            self.close()
+        else:
+            self._dispatch(**data)
