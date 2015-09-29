@@ -6,9 +6,6 @@ from __future__ import (absolute_import, division, print_function,
 from six import with_metaclass
 from autostack.utils import RegisterClasses
 
-__author__ = 'Avi Tal <avi3tal@gmail.com>'
-__date__ = 'Sep 8, 2015'
-
 
 class Facts(dict):
     PREF = 'ansible_'
@@ -32,6 +29,7 @@ class _BaseNode(object):
         self.connection = kwargs.get('connection', 'smart')
         self.user = kwargs.get('user', 'root')
         self._facts = None
+        self._grp = kwargs.get('group', 'all')
 
     def __repr__(self):
         repr_template = ("<{0.__class__.__module__}.{0.__class__.__name__}"
@@ -41,6 +39,10 @@ class _BaseNode(object):
     @property
     def facts(self):
         return self._facts
+
+    @property
+    def group(self):
+        return self._grp
 
     def _load_setup(self, data):
         self._facts = Facts(data['ansible_facts'])
@@ -93,7 +95,7 @@ class Node(_BaseNode):
     def __init__(self, node_template_inst):
         node = node_template_inst
         super(Node, self).__init__(
-            node.address, connection=node.connection, user=node.user)
+            node.address, connection=node.connection, user=node.user, group=node.group)
 
     @classmethod
     def get_concrete_os(cls, facts):

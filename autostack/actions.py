@@ -3,7 +3,7 @@
 
 from __future__ import (absolute_import, division, print_function,
                         unicode_literals)
-import jinja2
+
 import pytest
 import ansible
 import ansible.runner
@@ -21,9 +21,6 @@ from autostack.environment import Compound
 
 from pkg_resources import parse_version
 from tempfile import NamedTemporaryFile
-
-__author__ = 'Avi Tal <avi3tal@gmail.com>'
-__date__ = 'Sep 3, 2015'
 
 has_ansible_become = \
     parse_version(ansible.__version__) >= parse_version('1.9.0')
@@ -67,10 +64,6 @@ class _AnsibleModule(object):
     Sample Usage:...
     '''
 
-    HOST_LIST_TEMPLATE = """
-{{ip_addresses}}
-"""
-
     def __init__(self, queue, **kwargs):
         self.options = kwargs
         self.queue = queue
@@ -87,15 +80,48 @@ class _AnsibleModule(object):
             return _AnsibleModule(queue=self.queue, **self.options)
 
     @classmethod
-    def _inventory_manager(cls, nodes):
+    def _ansible_inventory(cls, nodes):
         '''
-        nodes: Compound instance slice from environment
+        :params nodes: Compound instance slice from environment
+        translate inventory to Ansible like file:
+
+        node1.group = clients
+        node1.address = 1.1.1.1
+
+        node2.group = servers
+        node2.address = 2.2.2.2
+
+        >>> l = [node1, node2]
+        >>> _ansible_inventory(l)
+
+        [clients]
+        1.1.1.1 connection=smart
+
+        [servers]
+        2.2.2.2 connection=smart
+
+
+        The Ansible like file is relevant only in case of running Playbook.
+        Running regular module addhoc is calling "all" hard coded.
         '''
         nodes = nodes if isinstance(nodes, list) else Compound([nodes])
+
+        groups = dict()
+
+        for node in nodes:
+            try:
+                groups[node.group].append(node.stripe)
+            except KeyError:
+                groups[node.group] = [node.stripe]
+
+        inventory = ''
+        for grp, hosts in groups.iteritems():
+            inventory += '[{name}]\n{hosts}\n'.format(
+                name=grp, hosts='\n'.join(hosts))
+
         try:
-            template = jinja2.Template(cls.HOST_LIST_TEMPLATE)
             temp = NamedTemporaryFile(delete=False)
-            temp.write(template.render({'ip_addresses': '\n'.join(nodes.stripe)}))
+            temp.write(inventory)
             temp.close()
             return ansible.inventory.Inventory(temp.name)
         except Exception as err:
@@ -108,7 +134,7 @@ class _AnsibleModule(object):
 
     def __call__(self, nodes, *args, **kwargs):
         # Initialize ansible inventory manage
-        inventory_manager = self._inventory_manager(nodes)
+        inventory = self._ansible_inventory(nodes)
         runner_callbacks = AnsibleRunnerCallback(self.queue)
 
         # Assemble module argument string
@@ -124,7 +150,7 @@ class _AnsibleModule(object):
 
         # Build module runner object
         kwargs = dict(
-            inventory=inventory_manager,
+            inventory=inventory,
             pattern='all',
             callbacks=runner_callbacks,
             module_name=self.module_name,
@@ -166,7 +192,7 @@ class _AnsibleModule(object):
         '''
 
         playbook = playbook or self.options.get('playbook')
-        inventory_manager = self._inventory_manager(env)
+        inventory = self._ansible_inventory(env)
 
         # Make sure we aggregate the stats
         stats = callbacks.AggregateStats()
@@ -182,7 +208,7 @@ class _AnsibleModule(object):
             remote_user=self.options.get('user'),
             callbacks=playbook_cb,
             runner_callbacks=runner_cb,
-            inventory=inventory_manager,
+            inventory=inventory,
             stats=stats
         )
         return pb.run()

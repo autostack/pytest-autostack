@@ -7,9 +7,6 @@ import yaml
 
 from autostack.nodes import NodeTemplate
 
-__author__ = 'Avi Tal <avi3tal@gmail.com>'
-__date__ = 'Sep 3, 2015'
-
 
 class Compound(list):
     '''
@@ -90,6 +87,6 @@ def initialize_context(request):
     with open(request.config.getvalue('inventory'), 'r') as f:
         data = yaml.load(f)
     for grp, hosts in data.iteritems():
-        _ctx[grp] = [NodeTemplate(**kw) for kw in hosts]
+        _ctx[grp] = [NodeTemplate(group=grp, **kw) for kw in hosts]
 
     return _ctx

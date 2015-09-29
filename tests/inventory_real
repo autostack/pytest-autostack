@@ -4,3 +4,7 @@ hosts:
   connection: smart
 - address: 172.16.164.162
   connection: smart
+local:
+- address: 127.0.0.1
+  connection: local
+  user: avi
