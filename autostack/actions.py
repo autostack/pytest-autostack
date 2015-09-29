@@ -43,20 +43,6 @@ class AnsibleRunnerCallback(callbacks.DefaultRunnerCallbacks):
         super(AnsibleRunnerCallback, self).on_async_ok(host, res, jid)
 
 
-class AnsiblePlaybookRunnerCallback(callbacks.PlaybookRunnerCallbacks):
-    def __init__(self, queue, *args, **kwargs):
-        super(AnsiblePlaybookRunnerCallback, self).__init__(*args, **kwargs)
-        self._q = queue
-
-    def on_ok(self, host, res):
-        self._q.put({'host': host, 'result': res})
-        super(AnsiblePlaybookRunnerCallback, self).on_ok(host, res)
-
-    def on_async_ok(self, host, res, jid):
-        self._q.put({'host': host, 'result': res})
-        super(AnsiblePlaybookRunnerCallback, self).on_async_ok(host, res, jid)
-
-
 class _AnsibleModule(object):
     '''
     Wrapper around ansible.runner.Runner()
@@ -198,9 +184,7 @@ class _AnsibleModule(object):
         stats = callbacks.AggregateStats()
         playbook_cb = callbacks.PlaybookCallbacks(
             verbose=ansible.utils.VERBOSITY)
-        runner_cb = AnsiblePlaybookRunnerCallback(
-            self.queue, stats, verbose=ansible.utils.VERBOSITY)
-
+        runner_cb = AnsibleRunnerCallback(self.queue)
 
         # TODO: add forks=int
         pb = ansible.playbook.PlayBook(
