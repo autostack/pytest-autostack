@@ -3,8 +3,10 @@
 
 from __future__ import (absolute_import, division, print_function,
                         unicode_literals)
+
 from six import with_metaclass
 from autostack.utils import RegisterClasses
+from autostack.constants import *
 
 
 class Facts(dict):
@@ -95,7 +97,8 @@ class Node(_BaseNode):
     def __init__(self, node_template_inst):
         node = node_template_inst
         super(Node, self).__init__(
-            node.address, connection=node.connection, user=node.user, group=node.group)
+            node.address, connection=node.connection,
+            user=node.user, group=node.group)
 
     @classmethod
     def get_concrete_os(cls, facts):
@@ -111,7 +114,7 @@ class Node(_BaseNode):
 
 
 class RedHat(with_metaclass(RegisterClasses, Node)):
-    OS_FAMILY = 'RedHat'
+    OS_FAMILY = OSFamily.redhat
 NodeTemplate.register(RedHat)
 
 
@@ -124,5 +127,5 @@ class CentOS(RedHat):
 class CentOS7(CentOS):
     @classmethod
     def is_concrete_class(cls, facts):
-        return facts.distribution == 'CentOS' and \
+        return facts.distribution == Distro.centos and \
             int(facts.distribution_major_version) >= 7
