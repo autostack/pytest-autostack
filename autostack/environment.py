@@ -4,8 +4,10 @@ from __future__ import (absolute_import, division, print_function,
                         unicode_literals)
 
 import yaml
+import pytest
 
 from autostack.nodes import NodeTemplate
+import grp
 
 
 class Compound(list):
@@ -71,7 +73,9 @@ class Context(dict):
             return super(Context, self).__getattribute__(item)
 
     def __setitem__(self, key, value):
-        super(Context, self).__setitem__(key, Compound(value))
+        if not isinstance(value, Context):
+            value = Compound(value)
+        super(Context, self).__setitem__(key, value)
 
     def set_concrete_os(self):
         for k, v in self.iteritems():
@@ -80,13 +84,43 @@ class Context(dict):
             except AttributeError:
                 # ignore non NodeTemplate objects
                 pass
+ctx = Context()
 
 
-def initialize_context(request):
-    _ctx = Context()
+def initialize_context(request, name=None, clear=False):
+    global ctx
+
     with open(request.config.getvalue('inventory'), 'r') as f:
         data = yaml.load(f)
-    for grp, hosts in data.iteritems():
-        _ctx[grp] = [NodeTemplate(group=grp, **kw) for kw in hosts]
 
-    return _ctx
+    if name is None:
+        # in case of None, choose to use the "default" key from
+        # inventory file
+        try:
+            name = data['default']
+        except KeyError:
+            raise pytest.UsageError('Failed to locate DEFAULT host group')
+
+    if clear:
+        # make sure to create new context
+        try:
+            del ctx[name]
+        except KeyError:
+            pass
+
+    try:
+        # only verify that name exists in ctx
+        ctx[name]
+    except KeyError:
+        try:
+            _ctx = Context()
+            for grp, hosts in data[name].iteritems():
+                _ctx[grp] = [NodeTemplate(group=grp, **kw) for kw in hosts]
+
+            print(_ctx)
+            ctx[name] = _ctx
+
+        except KeyError:
+            raise pytest.UsageError('Unkown {} host group! Could not find in inventory file')
+
+    return ctx[name]

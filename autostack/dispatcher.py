@@ -20,9 +20,10 @@ class Dispatcher(threading.Thread):
         self.active = True
 
     def _dispatch(self, host, result):
-        nodes = self.inventory.all.filter(address=host)[0]
+        # FIXME: dispatch objects due to object model
+        node = self.inventory.all.filter(address=host)[0]
         try:
-            getattr(nodes, '_load_' + result['invocation']['module_name'])(result)
+            getattr(node, '_load_' + result['invocation']['module_name'])(result)
         except AttributeError:
             pass
 

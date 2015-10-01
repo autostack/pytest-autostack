@@ -20,6 +20,7 @@ __date__ = 'Sep 1, 2015'
 
 queue = None
 requires_inventory = False
+host_group = None
 
 
 def pytest_addoption(parser):
@@ -30,6 +31,10 @@ def pytest_addoption(parser):
                     default=None,
                     action='store',
                     help='Inventory file URI (default: %default)')
+    group.addoption('--host-group',
+                    default=None,
+                    action='store',
+                    help='Set default Inventory host group')
     group.addoption('--ansible-playbook',
                     action='store',
                     dest='ansible_playbook',
@@ -94,6 +99,9 @@ def pytest_configure(config):
     '''
     if config.getvalue('ansible_debug'):
         ansible.utils.VERBOSITY = 5
+    if config.getvalue('host_group'):
+        global host_group
+        host_group = config.getvalue('host_group')
 
 
 def _verify_inventory(config):
@@ -142,26 +150,28 @@ def pytest_internalerror(excrepr, excinfo):
         queue.join()
 
 
-@pytest.yield_fixture(scope='session')
-def ctx(request):
+@pytest.yield_fixture(scope='function')
+def context(request):
     '''
-    Return Environment instance with function scope.
-    '''
-    yield initialize_context(request)
-
-
-@pytest.yield_fixture(scope='session')
-def run(request, ctx):
-    '''
-    Return _AnsibleModule instance with function scope.
     '''
     global queue
+    global host_group
     queue = RedisQueue()
-#    queue = ZeroMQueue()
 
-    consumer = Dispatcher(queue, ctx)
+    group_name = host_group
+    clear_mode = False
+    if request.scope == 'function':
+        if hasattr(request.function, 'inventory'):
+            group_name = request.function.inventory.kwargs.get('name', host_group)
+            clear_mode = request.function.inventory.kwargs.get('clear', False)
+    model = initialize_context(request, group_name, clear_mode)
+
+    consumer = Dispatcher(queue, model)
     consumer.daemon = True
     consumer.start()
 
-    yield initialize_ansible(request, queue)
+    run = initialize_ansible(request, queue)
+    run.setup_context(model)
+
+    yield model, run
     queue.join()
