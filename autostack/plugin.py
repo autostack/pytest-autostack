@@ -19,7 +19,6 @@ __date__ = 'Sep 1, 2015'
 
 
 queue = None
-requires_inventory = False
 host_group = None
 
 
@@ -114,23 +113,16 @@ def _verify_inventory(config):
 
 
 def pytest_collection_modifyitems(session, config, items):
-    requires_inventory = False
     for item in items:
         try:
-            if not requires_inventory:
-                if any([fixture == 'ctx' for fixture in item.fixturenames]):
-                    requires_inventory = True
+            if any([fixture == 'context' for fixture in item.fixturenames]):
+                if not _verify_inventory(config):
+                    raise pytest.UsageError(
+                        "Unable to load an inventory file,"
+                        " specify one with the --inventory parameter.")
+                break
         except AttributeError:
             continue
-
-    if requires_inventory:
-        errors = []
-        if not _verify_inventory(config):
-            errors.append("Unable to load an inventory file, "
-                          "specify one with the --inventory parameter.")
-
-        if errors:
-            raise pytest.UsageError(*errors)
 
 
 def pytest_report_header(config):
