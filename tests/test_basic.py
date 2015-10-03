@@ -81,3 +81,17 @@ def test_only_ctx_facts(context):
     pp(model.hosts[1].facts)
     pp(model)
     print(type(model.hosts[1].facts))
+
+
+@pytest.mark.inventory(name='production')
+def test_inventory_production(context):
+    print
+    model, _ = context
+    assert not hasattr(model, 'local'), 'Failed to collect production'
+
+
+@pytest.mark.inventory(name='develop')
+def test_inventory_development(context):
+    print
+    model, _ = context
+    assert hasattr(model, 'local'), 'Failed to collect develop'

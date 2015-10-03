@@ -146,6 +146,39 @@ def pytest_internalerror(excrepr, excinfo):
 @pytest.yield_fixture(scope='function')
 def context(request):
     '''
+    Inventory:
+    - set default inventory in yaml file just in case tests are missing
+      inventory mark and --host-group cli wasn't triggered.
+    - use --host-group option in cli to set default host group
+    - use inventory mark for specific host-group on each test
+
+    yaml file example:
+    default: develop
+    develop:
+      hosts:
+      - address: 1.1.1.1
+        connection: smart
+      - address: 2.2.2.2
+        connection: smart
+      local:
+      - address: 127.0.0.1
+        connection: local
+        user: avi
+    production:
+      hosts:
+      - address: 3.3.3.3
+        connection: smart
+      - address: 4.4.4.4
+        connection: smart
+
+    >>> @pytest.mark.inventory(name='production', clear=False)
+    >>> def test_foo()
+    >>>     ...
+
+    :param name: refer to the host group name
+    :param clear: refer to context model, by default (clear=False)
+    context model state will be saved between tests but in order to generate
+    idempotent tests one should use clear=True
     '''
     global queue
     global host_group

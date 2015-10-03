@@ -121,6 +121,7 @@ def initialize_context(request, name='', clear=False):
             ctx[name] = _ctx
 
         except KeyError:
-            raise pytest.UsageError('Unkown {} host group! Could not find in inventory file')
+            raise pytest.UsageError(
+                'Unknown {} host group! Could not find in inventory file')
 
     return ctx[name]
