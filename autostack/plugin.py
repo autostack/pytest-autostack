@@ -19,7 +19,7 @@ __date__ = 'Sep 1, 2015'
 
 
 queue = None
-host_group = None
+host_group = ''
 
 
 def pytest_addoption(parser):
@@ -98,6 +98,7 @@ def pytest_configure(config):
     '''
     if config.getvalue('ansible_debug'):
         ansible.utils.VERBOSITY = 5
+
     if config.getvalue('host_group'):
         global host_group
         host_group = config.getvalue('host_group')

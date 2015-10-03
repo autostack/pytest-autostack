@@ -87,13 +87,13 @@ class Context(dict):
 ctx = Context()
 
 
-def initialize_context(request, name=None, clear=False):
+def initialize_context(request, name='', clear=False):
     global ctx
 
     with open(request.config.getvalue('inventory'), 'r') as f:
         data = yaml.load(f)
 
-    if name is None:
+    if not name:
         # in case of None, choose to use the "default" key from
         # inventory file
         try:
